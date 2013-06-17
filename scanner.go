@@ -1,3 +1,5 @@
+// (c) 2013 Rick Arnold. Licensed under the BSD license (see LICENSE).
+
 package props
 
 import (
