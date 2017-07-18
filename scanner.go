@@ -154,6 +154,14 @@ func stateSeparator(s *scanner, ch rune) stateFunc {
 		return stateSeparatorChar
 	}
 
+	if ch == '\r' || ch == '\n' {
+		s.p.values[s.key.String()] = ""
+		s.key.Reset()
+		s.value.Reset()
+		s.current = &s.key
+		return stateNone
+	}
+
 	if isWhitespace(ch) {
 		return stateSeparator
 	}
@@ -167,6 +175,14 @@ func stateSeparator(s *scanner, ch rune) stateFunc {
 func stateSeparatorChar(s *scanner, ch rune) stateFunc {
 	if next := s.checkEscape(ch); next != nil {
 		return next
+	}
+
+	if ch == '\r' || ch == '\n' {
+		s.p.values[s.key.String()] = ""
+		s.key.Reset()
+		s.value.Reset()
+		s.current = &s.key
+		return stateNone
 	}
 
 	if isWhitespace(ch) {
