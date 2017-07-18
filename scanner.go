@@ -134,6 +134,10 @@ func stateKey(s *scanner, ch rune) stateFunc {
 		return stateSeparatorChar
 	}
 
+	if ch == '\r' || ch == '\n' {
+		return finishEntry(s)
+	}
+
 	if isWhitespace(ch) {
 		s.current = &s.value
 		return stateSeparator
@@ -155,11 +159,7 @@ func stateSeparator(s *scanner, ch rune) stateFunc {
 	}
 
 	if ch == '\r' || ch == '\n' {
-		s.p.values[s.key.String()] = ""
-		s.key.Reset()
-		s.value.Reset()
-		s.current = &s.key
-		return stateNone
+		return finishEntry(s)
 	}
 
 	if isWhitespace(ch) {
@@ -178,11 +178,7 @@ func stateSeparatorChar(s *scanner, ch rune) stateFunc {
 	}
 
 	if ch == '\r' || ch == '\n' {
-		s.p.values[s.key.String()] = ""
-		s.key.Reset()
-		s.value.Reset()
-		s.current = &s.key
-		return stateNone
+		return finishEntry(s)
 	}
 
 	if isWhitespace(ch) {
@@ -200,11 +196,7 @@ func stateValue(s *scanner, ch rune) stateFunc {
 	}
 
 	if ch == '\r' || ch == '\n' {
-		s.p.values[s.key.String()] = s.value.String()
-		s.key.Reset()
-		s.value.Reset()
-		s.current = &s.key
-		return stateNone
+		return finishEntry(s)
 	}
 
 	s.current.WriteRune(ch)
@@ -284,6 +276,16 @@ func stateUtfEscape(s *scanner, ch rune) stateFunc {
 
 	s.current.WriteRune(unicode.ReplacementChar)
 	return s.finishEscape()
+}
+
+// finishEntry handles the end of a property file entry and resets the
+// scanner for the next entry
+func finishEntry(s *scanner) stateFunc {
+	s.p.values[s.key.String()] = s.value.String()
+	s.key.Reset()
+	s.value.Reset()
+	s.current = &s.key
+	return stateNone
 }
 
 // isWhitespace returns true for any character considered to be whitespace

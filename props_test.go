@@ -97,6 +97,9 @@ key4 = d
 key5 : e
 key6   f
 key7
+key8=g
+key9=
+key10
 `
 
 func TestReadKeys(t *testing.T) {
@@ -107,13 +110,16 @@ func TestReadKeys(t *testing.T) {
 	}
 
 	want := map[string]string{
-		"key1": "a",
-		"key2": "b",
-		"key3": "c",
-		"key4": "d",
-		"key5": "e",
-		"key6": "f",
-		"key7": "",
+		"key1":  "a",
+		"key2":  "b",
+		"key3":  "c",
+		"key4":  "d",
+		"key5":  "e",
+		"key6":  "f",
+		"key7":  "",
+		"key8":  "g",
+		"key9":  "",
+		"key10": "",
 	}
 
 	if !reflect.DeepEqual(want, p.values) {
