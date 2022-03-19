@@ -29,42 +29,55 @@ type Expander struct {
 	Prefix string
 	// Suffix indicates the end of a property expansion.
 	Suffix string
-	*Properties
+	// Limit the nesting depth; <= 0 allows for unlimited nesting
+	Limit int
+	// Source provides the properties to use for expansion
+	Source PropertyGetter
 }
 
 // NewExpander creates an empty property set with the default expansion
 // Prefix "${" and Suffix "}".
-func NewExpander() *Expander {
+func NewExpander(source PropertyGetter) *Expander {
 	e := &Expander{
-		Prefix:     "${",
-		Suffix:     "}",
-		Properties: NewProperties(),
+		Prefix: "${",
+		Suffix: "}",
+		Source: source,
 	}
 	return e
 }
 
 // Get retrieves the value of a property with all property references expanded.
-// If the property does not exist, an empty string will be returned.
-func (e *Expander) Get(key string) string {
-	v := e.Properties.Get(key)
-	return e.expand(v)
+// If the property does not exist, an empty string will be returned. The bool
+// return value indicates whether the property was found.
+func (e *Expander) Get(key string) (string, bool) {
+	v, ok := e.Source.Get(key)
+	return e.expand(v, make(map[string]struct{})), ok
 }
 
 // GetDefault retrieves the value of a property with all property references
 // expanded. If the property does not exist, the default value will be returned
 // with all its property references expanded.
 func (e *Expander) GetDefault(key, defVal string) string {
-	v := e.Properties.GetDefault(key, defVal)
-	return e.expand(v)
+	v := e.Source.GetDefault(key, defVal)
+	return e.expand(v, make(map[string]struct{}))
 }
 
 // expand any embedded property references in a string
-func (e *Expander) expand(v string) string {
-	if len(v) <= 0 || strings.Index(v, e.Prefix) < 0 ||
-		strings.Index(v, e.Suffix) < 0 {
-
+func (e *Expander) expand(v string, seen map[string]struct{}) string {
+	if v == "" || !strings.Contains(v, e.Prefix) || !strings.Contains(v, e.Suffix) {
 		return v
 	}
+
+	if _, ok := seen[v]; ok {
+		// cycle detected
+		return v
+	}
+
+	if e.Limit > 0 && len(seen) >= e.Limit {
+		return v
+	}
+
+	seen[v] = struct{}{}
 
 	var out bytes.Buffer
 	start := 0
@@ -80,8 +93,8 @@ func (e *Expander) expand(v string) string {
 		for j := start; j < len(v); j++ {
 			if strings.HasPrefix(v[j:], e.Suffix) {
 				if nest == 0 {
-					exp := e.expand(v[start:j])
-					val := e.Properties.Get(exp)
+					exp := e.expand(v[start:j], seen)
+					val, _ := e.Source.Get(exp)
 					if len(val) == 0 {
 						out.WriteString(e.Prefix)
 						out.WriteString(exp)
@@ -111,6 +124,6 @@ func (e *Expander) expand(v string) string {
 	if v == result {
 		return out.String()
 	} else {
-		return e.expand(out.String())
+		return e.expand(out.String(), seen)
 	}
 }

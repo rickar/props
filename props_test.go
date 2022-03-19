@@ -4,6 +4,7 @@ package props
 
 import (
 	"bytes"
+	"io"
 	"reflect"
 	"sort"
 	"testing"
@@ -100,7 +101,7 @@ key7
 key8=g
 key9=
 key10
-`
+key11`
 
 func TestReadKeys(t *testing.T) {
 	p, err := Read(bytes.NewBufferString(keys))
@@ -120,6 +121,7 @@ func TestReadKeys(t *testing.T) {
 		"key8":  "g",
 		"key9":  "",
 		"key10": "",
+		"key11": "",
 	}
 
 	if !reflect.DeepEqual(want, p.values) {
@@ -131,7 +133,7 @@ func TestReadKeys(t *testing.T) {
 	}
 }
 
-var escapes = `
+var escapes = `\key0=123
 key\n1=a\nb\n
 key\t2:c\td
 key\f3 e\ff
@@ -144,6 +146,10 @@ key\uD834\uDD1E9=q\uD800\uDC00r
 key\
     \f10=s\
 	\ft
+key11=\u
+key12=\uZ
+key13 \t =abc
+key14     
 `
 
 func TestReadEscapes(t *testing.T) {
@@ -154,6 +160,7 @@ func TestReadEscapes(t *testing.T) {
 	}
 
 	want := map[string]string{
+		"key0":    "123",
 		"key\n1":  "a\nb\n",
 		"key\t2":  "c\td",
 		"key\f3":  "e\ff",
@@ -164,6 +171,10 @@ func TestReadEscapes(t *testing.T) {
 		"keyG8":   "o\uFFFDp",
 		"key𝄞9":   "q𐀀r",
 		"key\f10": "s\ft",
+		"key11":   "\uFFFD",
+		"key12":   "\uFFFD",
+		"key13":   "\t =abc",
+		"key14":   "",
 	}
 
 	if !reflect.DeepEqual(want, p.values) {
@@ -171,16 +182,39 @@ func TestReadEscapes(t *testing.T) {
 	}
 }
 
+type ErrorReader struct {
+}
+
+func (e *ErrorReader) Read(p []byte) (n int, err error) {
+	return 0, io.ErrNoProgress
+}
+
+func TestReadError(t *testing.T) {
+	p, err := Read(&ErrorReader{})
+	if p != nil || err == nil {
+		t.Errorf("want err; got none")
+	}
+}
+
 func TestGet(t *testing.T) {
 	p := NewProperties()
 	p.values["key1"] = "foo"
 
-	if p.Get("key1") != "foo" {
-		t.Errorf("want: foo; got: %q", p.Get("key1"))
+	if v, ok := p.Get("key1"); v != "foo" || !ok {
+		t.Errorf("want: foo; got: %q, %t", v, ok)
 	}
 
-	if p.Get("key2") != "" {
-		t.Errorf("want: \"\"; got: %q", p.Get("key2"))
+	if v, ok := p.Get("key2"); v != "" || ok {
+		t.Errorf("want: \"\"; got: %q, %t", v, ok)
+	}
+}
+
+func TestGetDefault(t *testing.T) {
+	p := NewProperties()
+	p.values["key1"] = "foo"
+
+	if p.GetDefault("key1", "bar") != "foo" {
+		t.Errorf("want: foo; got: %q", p.GetDefault("key1", "bar"))
 	}
 
 	if p.GetDefault("key2", "bar") != "bar" {
@@ -195,6 +229,21 @@ func TestSet(t *testing.T) {
 
 	if p.values["key1"] != "bar" {
 		t.Errorf("want: bar; got %q", p.values["key1"])
+	}
+}
+
+func TestClear(t *testing.T) {
+	p := NewProperties()
+	p.Set("key1", "foo")
+	p.Set("key2", "bar")
+
+	if len(p.values) != 2 {
+		t.Errorf("want len: 2, got: %d", len(p.values))
+	}
+
+	p.Clear()
+	if len(p.values) != 0 {
+		t.Errorf("want len: 0, got: %d", len(p.values))
 	}
 }
 
@@ -213,17 +262,14 @@ func TestNames(t *testing.T) {
 	}
 }
 
-type writeTest struct {
+var writeTests = []struct {
 	key  string
 	val  string
 	want string
-}
-
-var writeTests = []writeTest{
+}{
 	{"key", "val", "key=val\n"},
 	{"key", "  foo bar baz", "key=\\ \\ foo bar baz\n"},
-	{"key:=#!", ":=#!foo bar baz",
-		"key\\:\\=\\#\\!=\\:\\=\\#\\!foo bar baz\n"},
+	{"key:=#!", ":=#!foo bar baz", "key\\:\\=\\#\\!=\\:\\=\\#\\!foo bar baz\n"},
 	{"key foo", "bar", "key\\ foo=bar\n"},
 	{"key\nfoo", "bar\nbaz", "key\\nfoo=bar\\nbaz\n"},
 	{"key\rfoo", "bar\rbaz", "key\\rfoo=bar\\rbaz\n"},
@@ -247,5 +293,23 @@ func TestWrite(t *testing.T) {
 		if got != test.want {
 			t.Errorf("want: %q; got: %q", test.want, got)
 		}
+	}
+}
+
+type ErrorWriter struct {
+}
+
+func (e *ErrorWriter) Write(p []byte) (n int, err error) {
+	return 0, io.ErrShortWrite
+}
+
+func TestWriteError(t *testing.T) {
+	p := NewProperties()
+	p.Set("key1", "foo")
+	p.Set("key2", "bar")
+
+	err := p.Write(&ErrorWriter{})
+	if err == nil {
+		t.Errorf("want err; got none")
 	}
 }

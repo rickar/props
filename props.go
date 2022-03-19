@@ -10,10 +10,25 @@ import (
 	"unicode"
 )
 
+// PropertyGetter represents a source for looking up property values.
+type PropertyGetter interface {
+	// Get retrieves the value of a property. If the property does not exist, an
+	// empty string will be returned. The bool return value indicates whether
+	// the property was found.
+	Get(key string) (string, bool)
+
+	// GetDefault retrieves the value of a property. If the property does not
+	// exist, then the default value will be returned.
+	GetDefault(key, defVal string) string
+}
+
 // Properties represents a set of key-value pairs.
 type Properties struct {
 	values map[string]string
 }
+
+// Ensure that Properties implements PropertyGetter
+var _ PropertyGetter = &Properties{}
 
 // NewProperties creates a new, empty property set.
 func NewProperties() *Properties {
@@ -36,8 +51,9 @@ func Read(r io.Reader) (*Properties, error) {
 
 // Get retrieves the value of a property. If the property does not exist, an
 // empty string will be returned.
-func (p *Properties) Get(key string) string {
-	return p.values[key]
+func (p *Properties) Get(key string) (string, bool) {
+	val, ok := p.values[key]
+	return val, ok
 }
 
 // GetDefault retrieves the value of a property. If the property does not
@@ -145,14 +161,12 @@ func (p *Properties) Load(r io.Reader) error {
 		}
 		state = state(s, ch)
 	}
-
-	return nil
 }
 
 // Names returns the keys for all properties in the set.
 func (p *Properties) Names() []string {
 	names := make([]string, 0, len(p.values))
-	for k, _ := range p.values {
+	for k := range p.values {
 		names = append(names, k)
 	}
 	return names

@@ -7,15 +7,16 @@ import (
 )
 
 func TestNewExpander(t *testing.T) {
-	e := NewExpander()
-	if len(e.values) > 0 {
-		t.Errorf("want: 0 elements; got: %d", len(e.values))
-	}
+	l := &Properties{}
+	e := NewExpander(l)
 	if len(e.Prefix) < 1 {
 		t.Error("want prefix; got none")
 	}
 	if len(e.Suffix) < 1 {
 		t.Error("want suffix; got none")
+	}
+	if e.Source != l {
+		t.Error("want Source=l; got mismatch")
 	}
 }
 
@@ -32,16 +33,16 @@ var noExpand = []expTest{
 }
 
 func TestNoExpand(t *testing.T) {
-	e := NewExpander()
-
+	p := NewProperties()
 	for _, test := range noExpand {
-		e.Set(test.key, test.val)
+		p.Set(test.key, test.val)
 	}
+	e := NewExpander(p)
 
 	for _, test := range noExpand {
-		got := e.Get(test.key)
-		if got != test.want {
-			t.Errorf("want: %q; got: %q", test.want, got)
+		got, ok := e.Get(test.key)
+		if got != test.want || !ok {
+			t.Errorf("want: %q; got: %q, %t", test.want, got, ok)
 		}
 	}
 }
@@ -62,19 +63,20 @@ var singleExpand = []expTest{
 }
 
 func TestSingleExpand(t *testing.T) {
-	e := NewExpander()
-
-	e.Set("one", "1")
-	e.Set("two", "2")
+	p := NewProperties()
+	p.Set("one", "1")
+	p.Set("two", "2")
 
 	for _, test := range singleExpand {
-		e.Set(test.key, test.val)
+		p.Set(test.key, test.val)
 	}
 
+	e := NewExpander(p)
+
 	for _, test := range singleExpand {
-		got := e.Get(test.key)
-		if got != test.want {
-			t.Errorf("want: %q; got: %q", test.want, got)
+		got, ok := e.Get(test.key)
+		if got != test.want || !ok {
+			t.Errorf("want: %q; got: %q, %t", test.want, got, ok)
 		}
 	}
 }
@@ -86,31 +88,37 @@ var nestExpand = []expTest{
 	{"key4", "foobar${one${two${three${four}}}}", "foobarD"},
 	{"key5", "foo${exp}bar", "fooZZZbar"},
 	{"key6", "foo${recurse}bar", "foo${recurse}bar"},
+	{"key7", "foo${cycle}bar", "foo${cycle}bar"},
 }
 
 func TestNestExpand(t *testing.T) {
-	e := NewExpander()
+	p := NewProperties()
 
-	e.Set("one", "1")
-	e.Set("two", "2")
-	e.Set("four", "4")
-	e.Set("one2", "A")
-	e.Set("three4", "B")
-	e.Set("twoB", "C")
-	e.Set("oneC", "D")
-	e.Set("exp", "${exp2}")
-	e.Set("exp2", "${exp3}")
-	e.Set("exp3", "ZZZ")
-	e.Set("recurse", "${recurse}")
+	p.Set("one", "1")
+	p.Set("two", "2")
+	p.Set("four", "4")
+	p.Set("one2", "A")
+	p.Set("three4", "B")
+	p.Set("twoB", "C")
+	p.Set("oneC", "D")
+	p.Set("exp", "${exp2}")
+	p.Set("exp2", "${exp3}")
+	p.Set("exp3", "ZZZ")
+	p.Set("recurse", "${recurse}")
+	p.Set("cycle", "${cycle2}")
+	p.Set("cycle2", "${cycle3}")
+	p.Set("cycle3", "${cycle}")
 
 	for _, test := range nestExpand {
-		e.Set(test.key, test.val)
+		p.Set(test.key, test.val)
 	}
 
+	e := NewExpander(p)
+
 	for _, test := range nestExpand {
-		got := e.Get(test.key)
-		if got != test.want {
-			t.Errorf("want: %q; got: %q", test.want, got)
+		got, ok := e.Get(test.key)
+		if got != test.want || !ok {
+			t.Errorf("want: %q; got: %q; %t", test.want, got, ok)
 		}
 	}
 }
@@ -123,20 +131,67 @@ var sameToken = []expTest{
 }
 
 func TestSameToken(t *testing.T) {
-	e := NewExpander()
+	p := NewProperties()
+	p.Set("one", "1")
+
+	for _, test := range sameToken {
+		p.Set(test.key, test.val)
+	}
+
+	e := NewExpander(p)
 	e.Prefix = "@"
 	e.Suffix = "@"
 
-	e.Set("one", "1")
-
 	for _, test := range sameToken {
-		e.Set(test.key, test.val)
+		got, ok := e.Get(test.key)
+		if got != test.want || !ok {
+			t.Errorf("want: %q; got: %q, %t", test.want, got, ok)
+		}
+	}
+}
+
+func TestDefault(t *testing.T) {
+	p := NewProperties()
+	p.Set("key", "val")
+
+	e := NewExpander(p)
+
+	if v := e.GetDefault("key", "none"); v != "val" {
+		t.Errorf("want: val; got: %s", v)
+	}
+	if v := e.GetDefault("key2", "none"); v != "none" {
+		t.Errorf("want: none; got: %s", v)
+	}
+}
+
+var limits = []expTest{
+	{"key1", "foo${one}bar", "foo1bar"},
+	{"key2", "foo${two}bar", "foo20bar"},
+	{"key3", "foo${three}bar", "foo${thirtyOne}bar"},
+}
+
+func TestLimit(t *testing.T) {
+	p := NewProperties()
+	p.Set("one", "1")
+
+	p.Set("two", "${twenty}")
+	p.Set("twenty", "20")
+
+	p.Set("three", "${thirty}")
+	p.Set("thirty", "${thirtyOne}")
+	p.Set("thirtyOne", "31")
+
+	for _, test := range limits {
+		p.Set(test.key, test.val)
 	}
 
-	for _, test := range sameToken {
-		got := e.Get(test.key)
-		if got != test.want {
-			t.Errorf("want: %q; got: %q", test.want, got)
+	e := NewExpander(p)
+	e.Limit = 2
+
+	for _, test := range limits {
+		got, ok := e.Get(test.key)
+		if got != test.want || !ok {
+			t.Errorf("want: %q; got: %q, %t", test.want, got, ok)
 		}
 	}
 }

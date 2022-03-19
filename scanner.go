@@ -56,8 +56,8 @@ func (s *scanner) finishUtfEscape() {
 	units := make([]uint16, 0, len(s.utfUnits))
 	for _, v := range s.utfUnits {
 		var unit uint16
-		n, _ := fmt.Sscanf(strings.ToLower(v.String()), "%x", &unit)
-		if n == 0 {
+		_, err := fmt.Sscanf(strings.ToLower(v.String()), "%x", &unit)
+		if err != nil {
 			s.current.WriteRune(unicode.ReplacementChar)
 			s.finishEscape()
 			return
@@ -69,7 +69,6 @@ func (s *scanner) finishUtfEscape() {
 		s.current.WriteRune(r)
 	}
 	s.finishEscape()
-	return
 }
 
 func (s *scanner) checkEscape(ch rune) stateFunc {
@@ -114,7 +113,7 @@ func stateNone(s *scanner, ch rune) stateFunc {
 
 // stateComment indicates that the current line is a comment; all characters
 // up to the next newline will be ignored.
-func stateComment(s *scanner, ch rune) stateFunc {
+func stateComment(_ *scanner, ch rune) stateFunc {
 	if ch == '\r' || ch == '\n' {
 		return stateNone
 	}
@@ -272,6 +271,10 @@ func stateUtfEscape(s *scanner, ch rune) stateFunc {
 		} else {
 			return stateUtfEscape
 		}
+	} else if ch == '\n' || ch == '\r' {
+		s.current.WriteRune(unicode.ReplacementChar)
+		s.finishEscape()
+		return finishEntry(s)
 	}
 
 	s.current.WriteRune(unicode.ReplacementChar)

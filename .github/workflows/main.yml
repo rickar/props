@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: ["1.16", "1.17"]
+    env:
+      VERBOSE: 1
+      GOFLAGS: -mod=readonly
+      GOPROXY: https://proxy.golang.org
+
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v1
+        with:
+          go-version: ${{ matrix.go }}
+
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Download Deps
+        run: go mod download
+        working-directory: ./
+
+      - name: Format
+        run: if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then exit 1; fi
+
+      - name: Build
+        run: go build ./...
+        working-directory: ./
+
+      - name: Test
+        run: go test -v -cover -coverprofile cover.out ./...
+        working-directory: ./
+
+      - name: Coverage
+        run: if [ "$(go tool cover -func=cover.out | grep -v 100.0 | wc -l)" -gt 0 ]; then exit 1; fi
+        working-directory: ./
