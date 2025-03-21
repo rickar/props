@@ -3,6 +3,8 @@
 package props
 
 import (
+	"reflect"
+	"sort"
 	"testing"
 )
 
@@ -193,5 +195,26 @@ func TestLimit(t *testing.T) {
 		if got != test.want || !ok {
 			t.Errorf("want: %q; got: %q, %t", test.want, got, ok)
 		}
+	}
+}
+
+func TestExpanderNames(t *testing.T) {
+	p := NewProperties()
+	p.Set("one", "1")
+
+	p.Set("two", "${twenty}")
+	p.Set("twenty", "20")
+
+	p.Set("three", "${thirty}")
+	p.Set("thirty", "${thirtyOne}")
+	p.Set("thirtyOne", "31")
+
+	e := NewExpander(p)
+
+	got := e.Names()
+	sort.Strings(got)
+	want := []string{"one", "three", "thirty", "thirtyOne", "two", "twenty"}
+	if reflect.DeepEqual(got, want) {
+		t.Errorf("want: %v; got: %v", want, got)
 	}
 }

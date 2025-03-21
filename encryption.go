@@ -16,7 +16,7 @@ import (
 // returned with a nil error. If the property value could not be decrypted,
 // then an error and the default value will be returned.
 func Decrypt(password string, val string) (string, error) {
-	if strings.Index(val, "]") < 0 {
+	if !strings.Contains(val, "]") {
 		return "", fmt.Errorf("missing algorithm")
 	}
 	alg := val[0 : strings.Index(val, "]")+1]
@@ -65,10 +65,7 @@ func Encrypt(alg, password, value string) (string, error) {
 		// AES guarantees correct block size
 		gcm, _ := cipher.NewGCM(block)
 		nonce := make([]byte, gcm.NonceSize())
-		_, err = rand.Read(nonce)
-		if err != nil {
-			return "", fmt.Errorf("uanble to create nonce: [%w]", err)
-		}
+		rand.Read(nonce)
 
 		enc := gcm.Seal(nonce, nonce, []byte(value), nil)
 		result := base64.URLEncoding.EncodeToString(enc)

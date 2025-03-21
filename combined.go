@@ -39,3 +39,19 @@ func (c *Combined) GetDefault(key string, defVal string) string {
 		return defVal
 	}
 }
+
+// Names returns the unique names of all properties that have been set.
+func (c *Combined) Names() []string {
+	vals := make(map[string]struct{})
+	for _, l := range c.Sources {
+		for _, v := range l.Names() {
+			vals[v] = struct{}{}
+		}
+	}
+
+	result := make([]string, 0, len(vals))
+	for k := range vals {
+		result = append(result, k)
+	}
+	return result
+}

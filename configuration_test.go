@@ -107,6 +107,21 @@ func TestNewConfigurationProfile(t *testing.T) {
 	if val != "456" {
 		t.Errorf("want: '456'; got '%s'", val)
 	}
+
+	want := []string{"key1", "key2", "key3", "keyexp"}
+	found := 0
+	got := c.Names()
+	for _, gv := range got {
+		for _, wv := range want {
+			if gv == wv {
+				found++
+				break
+			}
+		}
+	}
+	if found != len(want) {
+		t.Errorf("want: %d items, got: %d", len(want), found)
+	}
 }
 
 type badFileInfo struct{}

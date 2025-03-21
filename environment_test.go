@@ -56,3 +56,24 @@ func TestEnvironmentGetDefault(t *testing.T) {
 		t.Errorf("want: 'ghi'; got: '%s'", val)
 	}
 }
+
+func TestEnvironmentNames(t *testing.T) {
+	e := &Environment{}
+
+	os.Setenv("PROPS_TEST_VAL1", "abc")
+	os.Setenv("PROPS_TEST_VAL2", "")
+
+	names := e.Names()
+	var found1, found2 bool
+	for _, v := range names {
+		if v == "PROPS_TEST_VAL1" {
+			found1 = true
+		} else if v == "PROPS_TEST_VAL2" {
+			found2 = true
+		}
+	}
+
+	if !found1 || !found2 {
+		t.Errorf("name not found; found1: %t, found2: %t", found1, found2)
+	}
+}

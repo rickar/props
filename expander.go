@@ -12,15 +12,18 @@ import (
 // replacement.
 //
 // For example, the following properties:
-//     color.alert = red
-//     color.info = blue
-//     color.text = black
 //
-//     css.alert = border: 1px solid ${color.alert}; color: ${color.text};
-//     css.info = border: 1px solid ${color.info}; color: ${color.text};
+//	color.alert = red
+//	color.info = blue
+//	color.text = black
+//
+//	css.alert = border: 1px solid ${color.alert}; color: ${color.text};
+//	css.info = border: 1px solid ${color.info}; color: ${color.text};
+//
 // Would result in the following values:
-//     "css.alert": "border: 1px solid red; color: black;"
-//     "css.info":  "border: 1px solid blue; color: black;"
+//
+//	"css.alert": "border: 1px solid red; color: black;"
+//	"css.info":  "border: 1px solid blue; color: black;"
 //
 // Nested and recursive property expansions are permitted. If a property value
 // does not exist, the property reference will be left unchanged.
@@ -60,6 +63,11 @@ func (e *Expander) Get(key string) (string, bool) {
 func (e *Expander) GetDefault(key, defVal string) string {
 	v := e.Source.GetDefault(key, defVal)
 	return e.expand(v, make(map[string]struct{}))
+}
+
+// Names returns the keys for all properties in the set.
+func (e *Expander) Names() []string {
+	return e.Source.Names()
 }
 
 // expand any embedded property references in a string

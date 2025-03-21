@@ -3,6 +3,8 @@
 package props
 
 import (
+	"reflect"
+	"sort"
 	"testing"
 )
 
@@ -50,5 +52,25 @@ func TestCombined(t *testing.T) {
 	val = c.GetDefault("props.test.val4", "other")
 	if val != "other" {
 		t.Errorf("want: 'other'; got: '%s'", val)
+	}
+}
+
+func TestCombinedNames(t *testing.T) {
+	c := &Combined{}
+
+	p1 := NewProperties()
+	p1.Set("props.test.val1", "abc")
+	p1.Set("props.test.val2", "")
+	p2 := NewProperties()
+	p2.Set("props.test.val1", "def")
+	p2.Set("props.test.val2", "")
+	p2.Set("props.test.val3", "ghi")
+	c.Sources = []PropertyGetter{p1, p2}
+
+	want := []string{"props.test.val1", "props.test.val2", "props.test.val3"}
+	got := c.Names()
+	sort.Strings(got)
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("want: %v; got %v", want, got)
 	}
 }

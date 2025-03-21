@@ -20,6 +20,9 @@ type PropertyGetter interface {
 	// GetDefault retrieves the value of a property. If the property does not
 	// exist, then the default value will be returned.
 	GetDefault(key, defVal string) string
+
+	// Names returns the keys for all properties in the set.
+	Names() []string
 }
 
 // Properties represents a set of key-value pairs.
@@ -80,18 +83,18 @@ Load reads the contents of a property file. Existing properties will be
 retained. The contents of the file will override any existing properties with
 matching keys.
 
-File Format
+# File Format
 
 The supported property file format follows the Java conventions. Each line of
 the file represents a key-value pair. Keys and values may be separated by '=',
 ':', or whitespace. Comments are indicated by a leading '#' or '!' character.
 
-Encoding
+# Encoding
 
 Java property files require an ISO 8859-1 encoding, but this package will also
 accept files encoded in UTF-8.
 
-Escapes
+# Escapes
 
 The escape character is '\'; valid escapes are '\f', '\n', '\r', '\t', and
 UTF-16 escapes in the format "\uXXXX" where each "X" is a hexadecimal digit.
@@ -100,16 +103,17 @@ result in 'A'. (This is useful for escaping the key separator or comment
 characters.) Invalid UTF-16 escapes will be replaced with the Unicode
 replacement character U+FFFD.
 
-Spanning Lines
+# Spanning Lines
 
 To create a key or value that spans multiple lines, end the line with '\'
 followed by a newline. All leading whitespace on the next line will be ignored
 and not included in the key or value, allowing for indentation of continued
 lines.
 
-Sample File
+# Sample File
 
 This is a sample property file:
+
 	# env.properties
 	! for dev environment
 	site.url = http://localhost:8180/
@@ -134,6 +138,7 @@ This is a sample property file:
 	rpt\ list\ bullet=\u2022
 
 Loading this file would result in the following properties:
+
 	"site.url":        "http://localhost:8180/"
 	"db.host":         "localhost"
 	"db.port":         "5432"

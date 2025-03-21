@@ -23,7 +23,7 @@ const (
 )
 
 // sizePattern provides the expression used for matching size values
-var sizePattern = regexp.MustCompile("^([0-9.]+)\\s{0,1}([a-zA-Z]*)$")
+var sizePattern = regexp.MustCompile(`^([0-9.]+)\s{0,1}([a-zA-Z]*)$`)
 
 // Configuration represents an application's configuration parameters provided
 // by properties.
@@ -48,11 +48,12 @@ type Configuration struct {
 //
 // The returned Configuration uses an Expander to return properties in the
 // following priority order:
-//   1. Command line arguments
-//   2. Environment variables
-//   3. <prefix>-<profile>.properties for the provided prefix and profiles
-//      values (in order)
-//   4. <prefix>.properties for the provided prefix value
+//  1. Command line arguments
+//  2. Environment variables
+//  3. <prefix>-<profile>.properties for the provided prefix and profiles
+//     values (in order)
+//  4. <prefix>.properties for the provided prefix value
+//
 // The first matching property value found will be returned.
 //
 // An error will be returned if one of the property files could not be read or
@@ -110,6 +111,11 @@ func (c *Configuration) Get(key string) (string, bool) {
 // exist, then the default value will be returned.
 func (c *Configuration) GetDefault(key, defVal string) string {
 	return c.Props.GetDefault(key, defVal)
+}
+
+// Names returns the unique names of all properties that have been set.
+func (c *Configuration) Names() []string {
+	return c.Props.Names()
 }
 
 // ParseInt converts a property value to an int. If the property does not exist,
@@ -178,7 +184,7 @@ func (c *Configuration) ParseByteSize(key string, defVal uint64) (uint64, error)
 		if match == nil || len(match) != 1 || len(match[0]) != 3 {
 			return defVal, fmt.Errorf("invalid size value %s=%s", key, val)
 		}
-		if strings.Index(match[0][1], ".") < 0 {
+		if !strings.Contains(match[0][1], ".") {
 			num, err := strconv.ParseUint(match[0][1], 10, 64)
 			if err != nil {
 				return defVal, fmt.Errorf("invalid size value %s=%s [%w]", key, val, err)
@@ -350,8 +356,9 @@ func (c *Configuration) sizeMult(suffix string) float64 {
 //
 // If StrictBool is false (the default), then the following values are
 // converted:
-//     true, t, yes, y, 1, on -> true
-//     false, f, no, n, 0, off -> false
+//
+//	true, t, yes, y, 1, on -> true
+//	false, f, no, n, 0, off -> false
 func (c *Configuration) ParseBool(key string, defVal bool) (bool, error) {
 	val, ok := c.Props.Get(key)
 	if ok {

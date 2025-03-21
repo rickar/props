@@ -4,6 +4,7 @@ package props
 
 import (
 	"os"
+	"reflect"
 	"testing"
 )
 
@@ -56,5 +57,33 @@ func TestArgumentsGetDefault(t *testing.T) {
 	val = a.GetDefault("test.val3", "ghi")
 	if val != "ghi" {
 		t.Errorf("want: 'ghi'; got: '%s'", val)
+	}
+}
+
+func TestArgumentsNames(t *testing.T) {
+	a := &Arguments{Prefix: "--props."}
+	os.Args = make([]string, 0)
+	os.Args = append(os.Args, "prog")
+	os.Args = append(os.Args, "--props.test.val1=abc")
+	os.Args = append(os.Args, "--props.test.val2=")
+
+	got := a.Names()
+	want := []string{"test.val1", "test.val2"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("want: %v; got: %v", want, got)
+	}
+}
+
+func TestArgumentsNamesNone(t *testing.T) {
+	a := &Arguments{Prefix: "--props."}
+	os.Args = make([]string, 0)
+	os.Args = append(os.Args, "prog")
+	os.Args = append(os.Args, "arg1")
+	os.Args = append(os.Args, "arg2")
+
+	got := a.Names()
+	want := []string{}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("want: %v; got: %v", want, got)
 	}
 }

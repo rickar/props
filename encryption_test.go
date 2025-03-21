@@ -3,15 +3,9 @@
 package props
 
 import (
-	"crypto/rand"
-	"errors"
 	"strings"
 	"testing"
 )
-
-type badReader struct{}
-
-func (b *badReader) Read(p []byte) (n int, err error) { return 0, errors.New("bad read") }
 
 func TestEncrypt(t *testing.T) {
 	val, err := Encrypt("xyz", "password", "plaintext")
@@ -33,14 +27,6 @@ func TestEncrypt(t *testing.T) {
 	if len(val) < 58 || !strings.HasPrefix(val, "[enc:1]") || err != nil {
 		t.Errorf("want: '[enc:1]...', err == nil; got: %s, %v", val, err)
 	}
-
-	oldReader := rand.Reader
-	rand.Reader = &badReader{}
-	val, err = Encrypt(EncryptAESGCM, "1234567890123456", "plaintext")
-	if val != "" || err == nil {
-		t.Errorf("want: '', err != nil; got: %s, %v", val, err)
-	}
-	rand.Reader = oldReader
 }
 
 func TestDecrypt(t *testing.T) {

@@ -47,6 +47,15 @@ func (e *Environment) GetDefault(key, defVal string) string {
 	return v
 }
 
+// Names returns the names of all environment variables.
+func (e *Environment) Names() []string {
+	env := os.Environ()
+	for i, v := range env {
+		env[i] = v[0:strings.Index(v, "=")]
+	}
+	return env
+}
+
 // normalizeEnv converts a rune into a suitable replacement for an environment
 // variable name.
 func normalizeEnv(r rune) rune {

@@ -12,7 +12,9 @@ import (
 // format. Other arguments are ignored.
 //
 // For example, the command:
-//   cmd -a -1 -z --prop.1=a --prop.2=b --prop.3 --log=debug
+//
+//	cmd -a -1 -z --prop.1=a --prop.2=b --prop.3 --log=debug
+//
 // with a prefix of '--prop.' would have properties "1"="a", "2"="b", and
 // "3"="".
 type Arguments struct {
@@ -43,10 +45,31 @@ func (a *Arguments) Get(key string) (string, bool) {
 
 // GetDefault retrieves the value of a property from the command line arguments.
 // If the property does not exist, then the default value will be returned.
-func (e *Arguments) GetDefault(key, defVal string) string {
-	v, ok := e.Get(key)
+func (a *Arguments) GetDefault(key, defVal string) string {
+	v, ok := a.Get(key)
 	if !ok {
 		return defVal
 	}
 	return v
+}
+
+// Names retrieves the property values set from the command line arguments.
+// The returned names don't include the prefix.
+// If no values were set, an empty slice is returned.
+func (a *Arguments) Names() []string {
+	result := make([]string, 0, 8)
+	prefix := a.Prefix
+	if prefix == "" {
+		prefix = "--"
+	}
+	for _, val := range os.Args {
+		if strings.HasPrefix(val, prefix) {
+			val = val[len(prefix):]
+			if strings.Contains(val, "=") {
+				val = val[0:strings.Index(val, "=")]
+			}
+			result = append(result, val)
+		}
+	}
+	return result
 }
